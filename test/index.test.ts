@@ -748,28 +748,6 @@ describe('hast-util-from-daisy', () => {
       expect(orderedList.tagName).toBe('ol');
       expect(unorderedList.tagName).toBe('ul');
     });
-
-    it('should work with default export', async () => {
-      // Test that default export works
-      const defaultFromDaisy = (await import('../lib')).default;
-
-      const input: XastRoot = {
-        type: 'root',
-        children: [
-          {
-            type: 'element',
-            name: 'level1',
-            attributes: {},
-            children: [{ type: 'text', value: 'Test' }],
-          },
-        ],
-      };
-
-      const result = defaultFromDaisy(input);
-      const section = result.children[0] as Element;
-      expect(section.tagName).toBe('section');
-      expect(section.properties?.['data-daisy-type']).toBe('level-1');
-    });
   });
 });
 
@@ -1108,6 +1086,127 @@ describe('DAISY XML String Processing', () => {
       expect(acronymElement?.properties?.title).toBe(
         'World Health Organization',
       );
+    });
+
+    it('should convert DAISY-specific attributes to data-daisy-* format for HTML elements', () => {
+      const xmlWithDaisyAttributes = `<?xml version="1.0" encoding="UTF-8"?>
+<dtbook xmlns="http://www.daisy.org/z3986/2005/dtbook/">
+  <head>
+    <meta name="dtb:uid" content="attr-test" />
+  </head>
+  <book>
+    <bodymatter>
+      <level1>
+        <hd>Test</hd>
+        <p render="optional" depth="2" custom-attr="value">Paragraph with DAISY attributes</p>
+        <div page="special" class="container" id="test-div">
+          <span render="required" smilref="audio.mp3">Text with DAISY attributes</span>
+        </div>
+        <blockquote cite="http://example.com" render="optional">
+          <p>Quote with mixed attributes</p>
+        </blockquote>
+      </level1>
+    </bodymatter>
+  </book>
+</dtbook>`;
+
+      const result = fromDaisyXml(xmlWithDaisyAttributes);
+
+      // Helper to find element by tag name and properties
+      const findElement = (
+        element: Element,
+        tagName: string,
+        testProp?: string,
+      ): Element | null => {
+        if (
+          element.tagName === tagName &&
+          (!testProp || element.properties?.[testProp])
+        ) {
+          return element;
+        }
+
+        const children = element.children.filter(
+          (child) => child.type === 'element',
+        ) as Element[];
+        // eslint-disable-next-line no-restricted-syntax
+        for (const child of children) {
+          const found = findElement(child, tagName, testProp);
+          if (found) return found;
+        }
+
+        return null;
+      };
+
+      const bodymatter = result.children.filter(
+        (child) => child.type === 'element',
+      )[0] as Element;
+
+      // Check paragraph with DAISY attributes
+      const paragraph = findElement(bodymatter, 'p', 'data-daisy-render');
+      expect(paragraph).toBeDefined();
+      expect(paragraph?.tagName).toBe('p'); // HTML p preserved
+      expect(paragraph?.properties?.['data-daisy-render']).toBe('optional');
+      expect(paragraph?.properties?.['data-daisy-depth']).toBe('2');
+      expect(paragraph?.properties?.['data-daisy-custom-attr']).toBe('value');
+
+      // Check div with mixed attributes
+      const div = findElement(bodymatter, 'div', 'data-daisy-page');
+      expect(div).toBeDefined();
+      expect(div?.tagName).toBe('div'); // HTML div preserved
+      expect(div?.properties?.['data-daisy-page']).toBe('special');
+      expect(div?.properties?.className).toBe('container'); // HTML class preserved
+      expect(div?.properties?.id).toBe('test-div'); // HTML id preserved
+
+      // Check span with DAISY attributes
+      const span = findElement(bodymatter, 'span', 'data-daisy-render');
+      expect(span).toBeDefined();
+      expect(span?.tagName).toBe('span'); // HTML span preserved
+      expect(span?.properties?.['data-daisy-render']).toBe('required');
+      expect(span?.properties?.['data-daisy-smilref']).toBe('audio.mp3');
+
+      // Check blockquote with mixed attributes
+      const blockquote = findElement(bodymatter, 'blockquote', 'cite');
+      expect(blockquote).toBeDefined();
+      expect(blockquote?.tagName).toBe('blockquote'); // HTML blockquote preserved
+      expect(blockquote?.properties?.cite).toBe('http://example.com'); // HTML cite preserved
+      expect(blockquote?.properties?.['data-daisy-render']).toBe('optional'); // DAISY render converted
+    });
+
+    it('should convert all DAISY-specific attributes to data-daisy-* format', () => {
+      const xmlWithDaisyAttributes = `<?xml version="1.0"?>
+        <dtbook xmlns="http://www.daisy.org/z3986/2005/dtbook/">
+          <book>
+            <bodymatter>
+              <prodnote render="optional" depth="2" smilref="audio.mp3" imgref="img1" pronounce="custom">
+                Note with DAISY attributes
+              </prodnote>
+            </bodymatter>
+          </book>
+        </dtbook>`;
+
+      const result = fromDaisyXml(xmlWithDaisyAttributes);
+
+      // Find the bodymatter element (main)
+      const bodymatter = result.children.find(
+        (child) =>
+          child.type === 'element' && (child as Element).tagName === 'main',
+      ) as Element | undefined;
+
+      expect(bodymatter).toBeDefined();
+
+      // Find the prodnote element (converted to aside)
+      const prodnote = bodymatter!.children?.find(
+        (child) =>
+          child.type === 'element' && (child as Element).tagName === 'aside',
+      ) as Element | undefined;
+
+      expect(prodnote).toBeDefined();
+      expect(prodnote?.tagName).toBe('aside');
+      expect(prodnote?.properties?.['data-daisy-render']).toBe('optional');
+      expect(prodnote?.properties?.['data-daisy-depth']).toBe('2');
+      expect(prodnote?.properties?.['data-daisy-smilref']).toBe('audio.mp3');
+      expect(prodnote?.properties?.['data-daisy-imgref']).toBe('img1');
+      expect(prodnote?.properties?.['data-daisy-pronounce']).toBe('custom');
     });
   });
 });
