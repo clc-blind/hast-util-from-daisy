@@ -43,15 +43,16 @@
 
 ## What is this?
 
-This package is a utility that transforms complete DAISY v3 XML documents to semantic HTML elements in HAST (HTML AST), with full metadata preservation. It intelligently converts DAISY-specific elements while preserving standard HTML elements as-is.
+This package is a utility that transforms complete DAISY v3 XML documents to semantic HTML elements in HAST (HTML AST), with full metadata preservation and comprehensive attribute handling. It intelligently converts DAISY-specific elements while preserving standard HTML elements as-is.
 
 The utility handles the complete DAISY v3 specification including:
 
 - **Complete document parsing**: XML declaration, DOCTYPE, and full document structure
 - **Metadata extraction**: Preserves Dublin Core and DAISY-specific metadata from document head
-- **Smart element mapping**: Only converts DAISY-specific elements, leaving standard HTML unchanged
-- **Accessibility preservation**: Maintains semantic meaning and accessibility features
-- **Attribute handling**: Preserves ARIA labels, IDs, classes, and other important attributes
+- **Element mapping**: Only converts DAISY-specific elements, leaving standard HTML unchanged
+- **Comprehensive attribute preservation**: Maintains 25+ standard HTML attributes (ARIA, IDs, classes, table attributes, form attributes, etc.)
+- **Attribute conversion**: DAISY-specific attributes automatically converted to `data-daisy-*` format
+- **Accessibility preservation**: Maintains semantic meaning and accessibility features throughout transformation
 
 ## When should I use this?
 
@@ -557,31 +558,49 @@ The transformation strategy prioritizes semantic preservation and web standards 
 - **HTML elements preserved**: Standard HTML elements (`<p>`, `<div>`, `<span>`, `<strong>`, `<em>`, `<blockquote>`, `<table>`, etc.) are left unchanged
 - **DAISY elements converted**: Only DAISY-specific elements that don't exist in HTML are transformed
 - **Deprecated elements modernized**: Deprecated HTML elements like `<acronym>` are converted to modern equivalents (`<abbr>`)
-- **Attributes preserved**: All important attributes (IDs, classes, ARIA labels) are maintained
+- **Comprehensive attribute handling**: Standard HTML attributes (25+ types) preserved, DAISY attributes converted to `data-daisy-*`
 - **Data attributes added**: DAISY-specific information is preserved via `data-daisy-*` attributes
 
-**Example of mixed content handling:**
+**Example of mixed content and attribute handling:**
 
 ```xml
-<!-- Input DAISY -->
+<!-- Input DAISY with mixed attributes -->
 <level1>
   <hd>Chapter Title</hd>
-  <p>Regular <strong>HTML</strong> content.</p>
-  <pagenum>42</pagenum>
-  <prodnote>DAISY-specific note</prodnote>
+  <p class="intro" id="p1" render="optional">Regular <strong>HTML</strong> content.</p>
+  <blockquote cite="http://example.com" render="required" depth="2">
+    Quote with mixed HTML and DAISY attributes.
+  </blockquote>
+  <pagenum page="special">42</pagenum>
+  <prodnote render="optional" smilref="audio.mp3">DAISY-specific note</prodnote>
 </level1>
 ```
 
 ```html
-<!-- Output HTML -->
+<!-- Output HTML with attribute handling -->
 <section data-daisy-type="level-1">
   <h1>Chapter Title</h1>
-  <p>Regular <strong>HTML</strong> content.</p>
-  <!-- HTML preserved -->
-  <span data-daisy-type="page-number">42</span>
-  <!-- DAISY converted -->
-  <aside data-daisy-type="production-note">DAISY-specific note</aside>
-  <!-- DAISY converted -->
+  <!-- HTML attributes preserved, DAISY attributes converted -->
+  <p class="intro" id="p1" data-daisy-render="optional"
+    >Regular <strong>HTML</strong> content.</p
+  >
+  <!-- Standard HTML cite preserved, DAISY attributes converted -->
+  <blockquote
+    cite="http://example.com"
+    data-daisy-render="required"
+    data-daisy-depth="2"
+  >
+    Quote with mixed HTML and DAISY attributes.
+  </blockquote>
+  <!-- DAISY element converted with attributes -->
+  <span data-daisy-type="page-number" data-daisy-page="special">42</span>
+  <!-- DAISY element and attributes converted -->
+  <aside
+    data-daisy-type="production-note"
+    data-daisy-render="optional"
+    data-daisy-smilref="audio.mp3"
+    >DAISY-specific note</aside
+  >
 </section>
 ```
 
@@ -655,7 +674,62 @@ The transformation strategy prioritizes semantic preservation and web standards 
 | DAISY Element | HTML Mapping | Conversion Rule                  | Rationale                               |
 | ------------- | ------------ | -------------------------------- | --------------------------------------- |
 | `<acronym>`   | `<abbr>`     | Converted with `data-daisy-type` | `<acronym>` is deprecated in HTML5      |
-| `<imggroup>`  | `<figure>`   | Semantic figure container        | Figure better represents grouped images |
+| `<imggroup>`  | `<section>`  | Semantic section container       | Section better represents grouped media |
+
+### DAISY Attribute Conversion
+
+The library intelligently handles attributes to ensure HTML validity while preserving DAISY semantics:
+
+#### Standard HTML Attributes (Preserved)
+
+These attributes are preserved as-is on all elements since they are valid HTML:
+
+- **Global attributes**: `id`, `class`, `lang`, `dir`, `title`, `tabindex`, `accesskey`
+- **ARIA attributes**: `aria-*` (all ARIA attributes), `role`
+- **Data attributes**: `data-*` (existing data attributes)
+- **Link attributes**: `href`, `hreflang`, `rel`, `profile`, `target`
+- **Media attributes**: `src`, `alt`, `width`, `height`, `media`, `charset`
+- **Table attributes**: `colspan`, `rowspan`, `headers`, `scope`, `axis`, `cellpadding`, `cellspacing`, `frame`, `rules`, `summary`
+- **Layout attributes**: `align`, `valign`, `border`
+- **Form attributes**: `name`, `content`, `type`
+- **Meta attributes**: `http-equiv`, `cite`, `style`
+
+#### DAISY-Specific Attributes (Converted to data-daisy-\*)
+
+These attributes are converted to the `data-daisy-*` format to maintain DAISY semantics while ensuring HTML validity:
+
+- **Rendering control**: `render` → `data-daisy-render`
+- **Structure attributes**: `depth` → `data-daisy-depth`, `level` → `data-daisy-level`, `page` → `data-daisy-page`
+- **Media references**: `smilref` → `data-daisy-smilref`, `imgref` → `data-daisy-imgref`
+- **Pronunciation**: `pronounce` → `data-daisy-pronounce`
+- **Custom attributes**: Any other DAISY-specific attributes → `data-daisy-{attribute}`
+
+#### Examples
+
+```xml
+<!-- Input: HTML element with mixed attributes -->
+<p id="para1" class="intro" render="optional" depth="2">Content</p>
+<blockquote cite="http://example.com" render="required">Quote</blockquote>
+<div aria-label="Navigation" custom-attr="value">Menu</div>
+```
+
+```html
+<!-- Output: Attribute handling -->
+<p id="para1" class="intro" data-daisy-render="optional" data-daisy-depth="2"
+  >Content</p
+>
+<blockquote cite="http://example.com" data-daisy-render="required"
+  >Quote</blockquote
+>
+<div aria-label="Navigation" data-daisy-custom-attr="value">Menu</div>
+```
+
+This approach ensures that:
+
+- **HTML validity** is maintained by using only standard HTML attributes
+- **DAISY semantics** are preserved through data attributes
+- **Accessibility** is enhanced by keeping ARIA attributes intact
+- **Styling and scripting** can target both HTML and DAISY-specific attributes
 
 ### Preserved HTML Elements
 
@@ -690,6 +764,10 @@ versions of Node.js.
 This package is compatible with Node.js 16+.
 It works with `xast-util-from-xml` version 4+, and integrates well with the
 broader unified ecosystem including `rehype` and `hast-util-*` packages.
+
+The library provides comprehensive DAISY v3 specification compliance with full
+element and attribute mapping, ensuring robust transformation of DAISY audiobook
+content to modern HTML5 standards.
 
 ## Security
 
