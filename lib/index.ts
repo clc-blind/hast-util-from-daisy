@@ -122,26 +122,8 @@ const DAISY_ELEMENT_MAP: Record<string, DaisyElementMapping> = {
 };
 
 /**
- * Convert XAST attributes to HAST properties (handles class -> className conversion)
+ * Convert DAISY-specific attributes to data-daisy-* format for any element
  */
-function convertXastAttributesToProperties(
-  attributes: Record<string, string | null | undefined>,
-): Properties {
-  const properties: Properties = {};
-
-  Object.keys(attributes).forEach((key) => {
-    const value = attributes[key];
-    if (value != null) {
-      if (key === 'class') {
-        properties.className = value;
-      } else {
-        properties[key] = value;
-      }
-    }
-  });
-
-  return properties;
-}
 
 /**
  * Get the appropriate heading level based on the current nesting depth
@@ -186,6 +168,97 @@ function getListType(element: XastElement): string {
 }
 
 /**
+ * Convert DAISY-specific attributes to data-daisy-* format for any element
+ */
+function convertDaisyAttributes(
+  attributes: Record<string, string | null | undefined>,
+): Properties {
+  const properties: Properties = {};
+
+  if (!attributes) return properties;
+
+  // Standard HTML attributes that should be preserved as-is
+  const standardHtmlAttributes = new Set([
+    'accesskey',
+    'align',
+    'alt',
+    'axis',
+    'border',
+    'cellpadding',
+    'cellspacing',
+    'char',
+    'charoff',
+    'charset',
+    'cite',
+    'class',
+    'colspan',
+    'content',
+    'dir',
+    'frame',
+    'headers',
+    'height',
+    'href',
+    'hreflang',
+    'http-equiv',
+    'id',
+    'lang',
+    'media',
+    'name',
+    'profile',
+    'rel',
+    'rowspan',
+    'rules',
+    'scope',
+    'span',
+    'src',
+    'style',
+    'summary',
+    'tabindex',
+    'title',
+    'type',
+    'valign',
+    'width',
+    // Also preserve ARIA and data attributes
+    'role',
+  ]);
+
+  Object.keys(attributes).forEach((key) => {
+    const value = attributes[key];
+    if (value == null) return;
+
+    // Helper function to convert values to proper types
+    const convertValue = (
+      val: typeof value,
+    ): string | number | boolean | null | undefined => {
+      if (Array.isArray(val)) {
+        return val.join(' ');
+      }
+      return val;
+    };
+
+    // Special handling for class attribute (becomes className in HAST)
+    if (key === 'class') {
+      properties.className = convertValue(value);
+      return;
+    }
+
+    // Preserve standard HTML attributes, ARIA attributes, and data attributes
+    if (
+      standardHtmlAttributes.has(key) ||
+      key.startsWith('aria-') ||
+      key.startsWith('data-')
+    ) {
+      properties[key] = convertValue(value);
+    } else {
+      // Convert DAISY-specific attributes to data-daisy-* format
+      properties[`data-daisy-${key}`] = convertValue(value);
+    }
+  });
+
+  return properties;
+}
+
+/**
  * Convert DAISY element attributes to HTML data attributes
  */
 function convertAttributes(
@@ -219,59 +292,15 @@ function convertAttributes(
     });
   }
 
-  // Convert XAST attributes to HAST properties
-  if (element.attributes) {
-    Object.keys(element.attributes).forEach((key) => {
-      const value = element.attributes?.[key];
+  // Convert all DAISY attributes using the unified function
+  const daisyAttributes = convertDaisyAttributes(element.attributes || {});
 
-      // Helper function to convert values to proper types
-      const convertValue = (
-        val: typeof value,
-      ): string | number | boolean | null | undefined => {
-        if (Array.isArray(val)) {
-          return val.join(' ');
-        }
-        return val;
-      };
-
-      switch (key) {
-        case 'class':
-          // Preserve class attribute as className in HAST
-          newProperties.className = convertValue(value);
-          break;
-        case 'id':
-          // Preserve id attribute
-          newProperties.id = convertValue(value);
-          break;
-        case 'render':
-          newProperties['data-daisy-render'] = convertValue(value);
-          break;
-        case 'depth':
-          newProperties['data-daisy-depth'] = convertValue(value);
-          break;
-        case 'page':
-          newProperties['data-daisy-page'] = convertValue(value);
-          break;
-        default:
-          // Preserve important HTML attributes (aria-, data-, role, etc.)
-          if (
-            key.startsWith('aria-') ||
-            key.startsWith('data-') ||
-            key === 'role' ||
-            key === 'lang' ||
-            key === 'title' ||
-            key === 'tabindex' ||
-            key === 'page'
-          ) {
-            newProperties[key] = convertValue(value);
-          } else if (!['class', 'id'].includes(key)) {
-            // Convert other attributes to data-daisy-* format
-            newProperties[`data-daisy-${key}`] = convertValue(value);
-          }
-          break;
-      }
-    });
-  }
+  // Merge the properties, with specific mappings taking precedence
+  Object.keys(daisyAttributes).forEach((key) => {
+    if (!(key in newProperties)) {
+      newProperties[key] = daisyAttributes[key];
+    }
+  });
 
   return newProperties;
 }
@@ -362,13 +391,11 @@ function convertXastChildren(
         return transformedElement;
       }
 
-      // Convert to basic HAST element
+      // Convert to basic HAST element for HTML-compatible elements
       const hastElement: Element = {
         type: 'element',
         tagName: xastElement.name,
-        properties: convertXastAttributesToProperties(
-          xastElement.attributes || {},
-        ),
+        properties: convertDaisyAttributes(xastElement.attributes || {}),
         children: convertXastChildren(xastElement.children || [], mappings, [
           ...ancestors,
         ]),
@@ -603,6 +630,3 @@ export function fromDaisyXml(
     );
   }
 }
-
-// Default export
-export default fromDaisy;
