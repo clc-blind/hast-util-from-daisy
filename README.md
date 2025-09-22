@@ -801,4 +801,4 @@ See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for how to interact with this pro
 
 ## License
 
-[MIT](LICENSE) © [clc-blind](https://github.com/clc-blind)
+[MIT](LICENSE.md) © [clc-blind](https://github.com/clc-blind)
