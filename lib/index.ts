@@ -563,11 +563,13 @@ export function extractDaisyMetadata(tree: XastRoot): Record<string, string> {
 }
 
 /**
- * Convert a complete DAISY v3 XML document string to HTML semantic elements in HAST
+ * Convert a complete DAISY v3 XML document string to HTML semantic elements in HAST.
  *
  * @param xmlString - The complete DAISY XML document as a string
  * @param options - Configuration options
- * @returns The transformed HAST tree with DAISY elements converted to HTML, including metadata
+ * @returns An object with `{ tree, metadata }`:
+ *   - `tree`: The transformed HAST tree with DAISY elements converted to HTML
+ *   - `metadata`: Key-value pairs extracted from the DAISY document head
  *
  * @example
  * ```js
@@ -586,15 +588,19 @@ export function extractDaisyMetadata(tree: XastRoot): Record<string, string> {
  *   </book>
  * </dtbook>`
  *
- * const result = fromDaisyXml(daisyXml)
- * console.log(result.metadata['dtb:uid']) // "example-123"
- * console.log(result.metadata['dc:Title']) // "Example Book"
+ * const { tree, metadata } = fromDaisyXml(daisyXml)
+ * console.log(metadata['dtb:uid']) // "example-123"
+ * console.log(metadata['dc:Title']) // "Example Book"
+ * // tree contains the transformed HAST tree
  * ```
  */
 export function fromDaisyXml(
   xmlString: string,
   options: FromDaisyOptions = {},
-): Root & { metadata: Record<string, string> } {
+): {
+  tree: Root;
+  metadata: Record<string, string>;
+} {
   try {
     // Parse the complete DAISY XML document using xast-util-from-xml
     const xastTree = fromXml(xmlString);
@@ -618,10 +624,10 @@ export function fromDaisyXml(
     // Transform using existing fromDaisy function
     const result = fromDaisy(bookXast, options);
 
-    // Always add metadata to result
-    (result as Root & { metadata: Record<string, string> }).metadata = metadata;
-
-    return result as Root & { metadata: Record<string, string> };
+    return {
+      tree: result,
+      metadata,
+    };
   } catch (error) {
     throw new Error(
       `Failed to parse DAISY XML: ${

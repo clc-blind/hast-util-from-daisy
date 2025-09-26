@@ -1,10 +1,5 @@
 # hast-util-from-daisy
 
-[![Build](https://github.com/clc-blind/hast-util-from-daisy/actions/workflows/ci.yml/badge.svg)](https://github.com/clc-blind/hast-util-from-daisy/actions)
-[![Coverage](https://codecov.io/github/clc-blind/hast-util-from-daisy/branch/main/graph/badge.svg)](https://codecov.io/github/clc-blind/hast-util-from-daisy)
-[![Downloads](https://img.shields.io/npm/dm/@clc-blind/hast-util-from-daisy.svg)](https://www.npmjs.com/package/@clc-blind/hast-util-from-daisy)
-[![Size](https://bundlejs.com/?q=@clc-blind/hast-util-from-daisy&badge=detailed)](https://bundlejs.com/?q=@clc-blind/hast-util-from-daisy)
-
 [hast](https://github.com/syntax-tree/hast) utility to transform complete DAISY v3 XML documents to semantic HTML with metadata preservation.
 
 ## Contents
@@ -68,7 +63,6 @@ This is particularly valuable for digital publishing platforms, educational tech
 
 ## Install
 
-This package is [ESM only](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c).
 In Node.js (version 16+), install with [npm](https://docs.npmjs.com/cli/install):
 
 ```sh
@@ -136,10 +130,10 @@ import { toHtml } from 'hast-util-to-html';
 import { readFileSync } from 'node:fs';
 
 const xml = readFileSync('example.xml', 'utf8');
-const result = fromDaisyXml(xml);
+const { tree, metadata } = fromDaisyXml(xml);
 
-console.log('Metadata:', result.metadata);
-console.log('HTML:', toHtml(result));
+console.log('Metadata:', metadata);
+console.log('HTML:', toHtml(tree));
 ```
 
 …then running `node example.js` yields:
@@ -198,7 +192,10 @@ This is the **recommended approach** for working with complete DAISY documents.
 
 ###### Returns
 
-Transform result with metadata ([`Root & { metadata: Record<string, string> }`](https://github.com/syntax-tree/hast#root)).
+Object with the following properties:
+
+- `tree` ([`Root`](https://github.com/syntax-tree/hast#root)) — the transformed HAST tree
+- `metadata` (`Record<string, string>`) — extracted metadata from the DAISY document
 
 ###### Example
 
@@ -223,11 +220,11 @@ const daisyXml = `<?xml version="1.0" encoding="UTF-8"?>
   </book>
 </dtbook>`;
 
-const result = fromDaisyXml(daisyXml);
+const { tree, metadata } = fromDaisyXml(daisyXml);
 
-console.log(result.metadata['dtb:uid']); // => 'example-123'
-console.log(result.metadata['dc:Title']); // => 'Example Book'
-// result also contains the transformed HAST tree
+console.log(metadata['dtb:uid']); // => 'example-123'
+console.log(metadata['dc:Title']); // => 'Example Book'
+// tree contains the transformed HAST tree
 ```
 
 ### `fromDaisy(tree[, options])`
@@ -429,16 +426,16 @@ import { toHtml } from 'hast-util-to-html';
 import { readFileSync } from 'node:fs';
 
 const daisyXml = readFileSync('book.xml', 'utf8');
-const result = fromDaisyXml(daisyXml);
+const { tree, metadata } = fromDaisyXml(daisyXml);
 
 // Access metadata
-console.log('Book ID:', result.metadata['dtb:uid']);
-console.log('Title:', result.metadata['dc:Title']);
-console.log('Author:', result.metadata['dc:Creator']);
-console.log('Duration:', result.metadata['dtb:totalTime']);
+console.log('Book ID:', metadata['dtb:uid']);
+console.log('Title:', metadata['dc:Title']);
+console.log('Author:', metadata['dc:Creator']);
+console.log('Duration:', metadata['dtb:totalTime']);
 
 // Convert to HTML
-const html = toHtml(result);
+const html = toHtml(tree);
 console.log(html);
 ```
 
@@ -474,10 +471,10 @@ const daisyXml = `<?xml version="1.0" encoding="UTF-8"?>
 </dtbook>`;
 
 // Method 1: Using fromDaisyXml (recommended for complete documents)
-const result = fromDaisyXml(daisyXml);
+const { tree, metadata } = fromDaisyXml(daisyXml);
 console.log('Complete transformation:', {
-  metadata: result.metadata,
-  hasContent: result.children.length > 0,
+  metadata,
+  hasContent: tree.children.length > 0,
 });
 
 // Method 2: Extract metadata separately
