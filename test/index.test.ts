@@ -794,7 +794,7 @@ describe('DAISY XML String Processing', () => {
       expect(result.metadata['dtb:totalTime']).toBe('01:23:45');
 
       // Filter out text nodes (whitespace) to get only elements
-      const elements = result.children.filter(
+      const elements = result.tree.children.filter(
         (child) => child.type === 'element',
       );
       expect(elements).toHaveLength(2); // frontmatter and bodymatter
@@ -843,7 +843,7 @@ describe('DAISY XML String Processing', () => {
       expect(result.metadata['dtb:uid']).toBe('minimal-123');
 
       // Filter out text nodes (whitespace) to get only elements
-      const elements = result.children.filter(
+      const elements = result.tree.children.filter(
         (child) => child.type === 'element',
       );
       expect(elements).toHaveLength(1); // just bodymatter
@@ -956,7 +956,7 @@ describe('DAISY XML String Processing', () => {
       const result = fromDaisyXml(mixedXml);
 
       // Filter out text nodes for easier testing
-      const elements = result.children.filter(
+      const elements = result.tree.children.filter(
         (child) => child.type === 'element',
       );
       expect(elements).toHaveLength(1); // bodymatter
@@ -1075,7 +1075,7 @@ describe('DAISY XML String Processing', () => {
         return null;
       };
 
-      const bodymatter = result.children.filter(
+      const bodymatter = result.tree.children.filter(
         (child) => child.type === 'element',
       )[0] as Element;
       const acronymElement = findAcronym(bodymatter);
@@ -1137,7 +1137,7 @@ describe('DAISY XML String Processing', () => {
         return null;
       };
 
-      const bodymatter = result.children.filter(
+      const bodymatter = result.tree.children.filter(
         (child) => child.type === 'element',
       )[0] as Element;
 
@@ -1187,7 +1187,7 @@ describe('DAISY XML String Processing', () => {
       const result = fromDaisyXml(xmlWithDaisyAttributes);
 
       // Find the bodymatter element (main)
-      const bodymatter = result.children.find(
+      const bodymatter = result.tree.children.find(
         (child) =>
           child.type === 'element' && (child as Element).tagName === 'main',
       ) as Element | undefined;
