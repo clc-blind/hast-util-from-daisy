@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/clc-blind/hast-util-from-daisy/compare/v1.0.1...v1.0.2) (2025-09-26)
+
+
+### Bug Fixes
+
+* **lib:** update return data ([e67044f](https://github.com/clc-blind/hast-util-from-daisy/commit/e67044ff033e4722dbc71535b98d8fe813cae58c))
+* **lib:** update return data ([12e16fe](https://github.com/clc-blind/hast-util-from-daisy/commit/12e16fe2f6da5b560f5b9ccda3da8a9124c579ae))
+
 ## [1.0.1](https://github.com/clc-blind/hast-util-from-daisy/compare/v1.0.0...v1.0.1) (2025-09-17)
 
 
