@@ -1,6 +1,6 @@
 {
   "name": "@clc-blind/hast-util-from-daisy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "clc-blind",
   "description": "hast utility to transform DAISY v3 documents to semantic HTML with metadata preservation",
   "repository": {
